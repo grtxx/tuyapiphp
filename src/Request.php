@@ -11,9 +11,9 @@
 			$this->_endpoint = $endpoint;
 			$this->_request =  strtoupper( $request );
 			$this->_token = ( $token ) ? $token : '';
-			$this->_sigHeaders = $sigHeaders; 					// todo
-			$this->_payload = $this->_setPayload( $payload );		// this property does nothing yet
-			$this->_body = ( $payload && $this->_request != 'GET' ) ? json_encode( $payload ) : '';
+			$this->_sigHeaders = $sigHeaders; // todo
+			$this->_payload = $this->_setPayload( $payload );
+			$this->_body = ( ( $payload && $this->_request != 'GET' ) ? json_encode( $payload ) : '' );
 			$string = [ strtoupper( $request ) , hash( 'sha256' , $this->_body ) , '' , $this->_endpoint ];
 			$stringtosign = implode( "\n" , $string );
 			$sign = $this->_sign( $this->_time , $stringtosign );
@@ -26,13 +26,18 @@
 			if ( !$payload ){ return ''; }
 			if ( $this->_request == 'POST' ||  $this->_request == 'PUT'  )
 			{
-				return '';// json_encode( $payload );
+				return json_encode( $payload );
 			}
 			else
 			{
-				$payload = urldecode( http_build_query( $payload ) );
-				$this->_endpoint = $this->_endpoint . 
-					( ( preg_match( '#\?#' , $this->_endpoint ) ) ? '&' . $payload : '?' . $payload );
+				//$payload = http_build_query( $payload );
+                                $pl = '';
+                                ksort( $payload );
+                                foreach( $payload as $k => $v ) {
+                                    $pl .= $k."=".$v."&";
+                                }
+                                $pl = substr( $pl, 0, strlen( $pl ) - 1 );
+				$this->_endpoint .= ( preg_match( '#\?#' , $this->_endpoint ) ) ? '&' . $pl : '?' . $pl;
 				return '';
 			}
 		}
@@ -41,13 +46,13 @@
 		{
 			$this->_debug->output( $this->_request . ' ' . $this->_config[ 'baseUrl' ] . $this->_endpoint );
 			$this->_debug->output( 'Headers:' , $this->_headers );
-			if ( $this->_body )
+			if ( $this->_body != '' )
 			{
 				$this->_debug->output( 'Payload:' , json_decode( 
 							$this->_body , $this->_config[ 'associative' ] ) );
 			}
 			$ch = curl_init( );
-			curl_setopt( $ch , CURLOPT_URL , $this->_config[ 'baseUrl' ] . $this->_endpoint );
+                        curl_setopt( $ch , CURLOPT_URL , $this->_config[ 'baseUrl' ] . $this->_endpoint );
 			curl_setopt( $ch , CURLOPT_HTTPHEADER , $this->_headers );
 			//curl_setopt( $ch , CURLOPT_HEADER , 1 );
 			curl_setopt( $ch , CURLOPT_CUSTOMREQUEST , $this->_request ); 
